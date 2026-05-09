@@ -16,3 +16,5 @@ serve(
     console.log(`Server is running on http://localhost:${info.port}`);
   },
 );
+
+export default app;
