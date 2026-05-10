@@ -23,7 +23,7 @@ const INDIAN_EXCHANGES = ["NSE", "BSE"];
 // -- helper functions --
 
 const _inferCurrency = (exchange: string): string => {
-  return INDIAN_EXCHANGES.includes(exchange.toUpperCase()) ? "INR" : "USD";
+  return INDIAN_EXCHANGES.includes(exchange?.toUpperCase()) ? "INR" : "USD";
 };
 
 // -- main parser --
@@ -43,9 +43,11 @@ export const zerodhaParser: BrokerParser = {
       const rowNumber = index + 2; // +2 because row 1 is headers
 
       // helper to push errors with row number
-      const pushError = (reason: string) => {
+      const pushError = (field: string, value: unknown, reason: string) => {
         errors.push({
           row: rowNumber,
+          field,
+          value,
           reason,
         });
       };
@@ -53,28 +55,28 @@ export const zerodhaParser: BrokerParser = {
       // validate date
       const executedAt = parseDate(row.trade_date);
       if (!executedAt) {
-        pushError(`Invalid date: ${row.trade_date}`);
+        pushError("executed_at", row.trade_date, "Invalid date");
         return;
       }
 
       // validate quantity
       const quantity = Number(row.quantity);
       if (isNaN(quantity) || quantity <= 0) {
-        pushError(`Quantity must be positive, got ${row.quantity}`);
+        pushError("quantity", row.quantity, "Quantity must be positive");
         return;
       }
 
       // validate price
       const price = Number(row.price);
       if (isNaN(price) || price <= 0) {
-        pushError(`Price must be positive, got '${row.price}'`);
+        pushError("price", row.price, "Price must be positive");
         return;
       }
 
       // validate side
-      const side = row.trade_type.toUpperCase();
+      const side = row.trade_type?.toUpperCase();
       if (side !== "BUY" && side !== "SELL") {
-        pushError(`Side must be BUY or SELL, got '${row.trade_type}'`);
+        pushError("side", row.trade_type, "Side must be BUY or SELL");
         return;
       }
 
@@ -95,10 +97,7 @@ export const zerodhaParser: BrokerParser = {
       });
 
       if (!result.success) {
-        errors.push({
-          row: rowNumber,
-          reason: `Invalid trade data: ${result.error.message}`,
-        });
+        pushError("schema", null, "Invalid trade data");
         return;
       }
 

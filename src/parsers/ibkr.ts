@@ -42,9 +42,11 @@ export const ibkrParser: BrokerParser = {
       const rowNumber = index + 2; // +2 because row 1 is headers
 
       // helper to push errors with row number
-      const pushError = (reason: string) => {
+      const pushError = (field: string, value: unknown, reason: string) => {
         errors.push({
           row: rowNumber,
+          field,
+          value,
           reason,
         });
       };
@@ -52,28 +54,28 @@ export const ibkrParser: BrokerParser = {
       // validate date
       const executedAt = parseDate(row.DateTime);
       if (!executedAt) {
-        pushError(`Invalid date: ${row.DateTime}`);
+        pushError("executed_at", row.DateTime, "Invalid date");
         return;
       }
 
       // validate quantity
       const quantity = Number(row.Quantity);
       if (isNaN(quantity) || quantity <= 0) {
-        pushError(`Quantity must be positive, got ${row.Quantity}`);
+        pushError("quantity", row.Quantity, "Quantity must be positive");
         return;
       }
 
       // validate price
       const price = Number(row.TradePrice);
       if (isNaN(price) || price <= 0) {
-        pushError(`Price must be positive, got '${row.TradePrice}'`);
+        pushError("price", row.TradePrice, "Price must be positive");
         return;
       }
 
       // validate side
       const side = _inferSide(row["Buy/Sell"]);
       if (!side) {
-        pushError(`Invalid side: ${row["Buy/Sell"]}`);
+        pushError("side", row["Buy/Sell"], "Invalid side");
         return;
       }
 
@@ -92,7 +94,7 @@ export const ibkrParser: BrokerParser = {
         rawData: row,
       });
       if (!result.success) {
-        pushError(`Validation error: ${result.error.message}`);
+        pushError("schema", null, "Invalid trade data");
         return;
       }
 
