@@ -3,33 +3,32 @@ import type { SkippedRow } from "../schemas/ParseResultSchema.js";
 import { TradeSchema, type Trade } from "../schemas/TradeSchema.js";
 import { parseDate } from "./utils.js";
 
-// -- CONSTANTS --
-
 const REQUIRED_HEADERS = [
-  "symbol",
-  "isin",
-  "trade_date",
-  "trade_type",
-  "quantity",
-  "price",
-  "trade_id",
-  "order_id",
-  "exchange",
-  "segment",
+  "TradeID",
+  "AccountID",
+  "Symbol",
+  "DateTime",
+  "Buy/Sell",
+  "Quantity",
+  "TradePrice",
+  "Currency",
+  "Commission",
+  "NetAmount",
+  "AssetClass",
 ];
 
-const INDIAN_EXCHANGES = ["NSE", "BSE"];
-
-// -- helper functions --
-
-const _inferCurrency = (exchange: string): string => {
-  return INDIAN_EXCHANGES.includes(exchange.toUpperCase()) ? "INR" : "USD";
+const _inferSide = (side: string): "BUY" | "SELL" | null => {
+  if (side === "BOT") return "BUY";
+  if (side === "SLD") return "SELL";
+  return null;
 };
 
-// -- main parser --
+const _normalizeSymbol = (symbol: string): string => {
+  return symbol.replace(".", "/");
+};
 
-export const zerodhaParser: BrokerParser = {
-  brokerName: "zerodha",
+export const ibkrParser: BrokerParser = {
+  brokerName: "ibkr",
 
   detect(headers: string[]): boolean {
     return REQUIRED_HEADERS.every((h) => headers.includes(h));
@@ -51,54 +50,49 @@ export const zerodhaParser: BrokerParser = {
       };
 
       // validate date
-      const executedAt = parseDate(row.trade_date);
+      const executedAt = parseDate(row.DateTime);
       if (!executedAt) {
-        pushError(`Invalid date: ${row.trade_date}`);
+        pushError(`Invalid date: ${row.DateTime}`);
         return;
       }
 
       // validate quantity
-      const quantity = Number(row.quantity);
+      const quantity = Number(row.Quantity);
       if (isNaN(quantity) || quantity <= 0) {
-        pushError(`Quantity must be positive, got ${row.quantity}`);
+        pushError(`Quantity must be positive, got ${row.Quantity}`);
         return;
       }
 
       // validate price
-      const price = Number(row.price);
+      const price = Number(row.TradePrice);
       if (isNaN(price) || price <= 0) {
-        pushError(`Price must be positive, got '${row.price}'`);
+        pushError(`Price must be positive, got '${row.TradePrice}'`);
         return;
       }
 
       // validate side
-      const side = row.trade_type.toUpperCase();
-      if (side !== "BUY" && side !== "SELL") {
-        pushError(`Side must be BUY or SELL, got '${row.trade_type}'`);
+      const side = _inferSide(row["Buy/Sell"]);
+      if (!side) {
+        pushError(`Invalid side: ${row["Buy/Sell"]}`);
         return;
       }
 
-      const currency = _inferCurrency(row.exchange);
       const totalAmount = price * quantity * (side === "SELL" ? -1 : 1);
 
       // validate final trade object
       const result = TradeSchema.safeParse({
-        symbol: row.symbol,
+        symbol: _normalizeSymbol(row.Symbol),
         side,
         quantity,
         price,
         totalAmount,
-        currency,
+        currency: row.Currency,
         executedAt,
-        broker: "zerodha",
+        broker: "ibkr",
         rawData: row,
       });
-
       if (!result.success) {
-        errors.push({
-          row: rowNumber,
-          reason: `Invalid trade data: ${result.error.message}`,
-        });
+        pushError(`Validation error: ${result.error.message}`);
         return;
       }
 
