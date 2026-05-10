@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { detectParser } from "../detectParser.js";
-import { zerodhaParser } from "../zerodha.js";
-import { ibkrParser } from "../ibkr.js";
 
 const ZERODHA_HEADERS = [
   "symbol", "isin", "trade_date", "trade_type", "quantity",
