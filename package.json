@@ -9,10 +9,12 @@
   "dependencies": {
     "@hono/node-server": "^1.19.14",
     "hono": "^4.12.18",
+    "papaparse": "^5.5.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^20.11.17",
+    "@types/papaparse": "^5.5.2",
     "tsx": "^4.7.1",
     "typescript": "^5.8.3"
   }
