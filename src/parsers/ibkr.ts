@@ -1,7 +1,8 @@
 import type { BrokerParser } from "../schemas/BrokerParserSchema.js";
 import type { SkippedRow } from "../schemas/ParseResultSchema.js";
 import { TradeSchema, type Trade } from "../schemas/TradeSchema.js";
-import { parseDate } from "./utils.js";
+
+// -- CONSTANTS --
 
 const REQUIRED_HEADERS = [
   "TradeID",
@@ -17,6 +18,8 @@ const REQUIRED_HEADERS = [
   "AssetClass",
 ];
 
+// -- helper functions --
+
 const _inferSide = (side: string): "BUY" | "SELL" | null => {
   if (side === "BOT") return "BUY";
   if (side === "SLD") return "SELL";
@@ -26,6 +29,25 @@ const _inferSide = (side: string): "BUY" | "SELL" | null => {
 const _normalizeSymbol = (symbol: string): string => {
   return symbol.replace(".", "/");
 };
+
+export const _parseDate = (dateStr: string): string | null => {
+  // ISO 8601 with timezone e.g. 2026-04-01T14:30:00Z
+  if (dateStr.includes("T")) {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  // MM/DD/YYYY
+  const mdy = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (mdy) {
+    const [, month, day, year] = mdy;
+    return new Date(`${year}-${month}-${day}T00:00:00Z`).toISOString();
+  }
+
+  return null;
+};
+
+// -- main parser --
 
 export const ibkrParser: BrokerParser = {
   brokerName: "ibkr",
@@ -52,7 +74,7 @@ export const ibkrParser: BrokerParser = {
       };
 
       // validate date
-      const executedAt = parseDate(row.DateTime);
+      const executedAt = _parseDate(row.DateTime);
       if (!executedAt) {
         pushError("executed_at", row.DateTime, "Invalid date");
         return;

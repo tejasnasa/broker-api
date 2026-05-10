@@ -12,7 +12,7 @@ importRoute.post("/import", async (c) => {
     return c.json({ error: "No file uploaded" }, 400);
   }
 
-  if (!file.name.endsWith(".csv")) {
+  if (!file.name.toLowerCase().endsWith(".csv")) {
     return c.json({ error: "File must be a CSV" }, 400);
   }
 
@@ -23,6 +23,7 @@ importRoute.post("/import", async (c) => {
 
   const result = Papa.parse<Record<string, string>>(text, {
     header: true, // include headers
+    skipEmptyLines: true,
     transformHeader: (h) => h.trim(), // trim headers
     transform: (v) => v.trim(), // trim values
   });

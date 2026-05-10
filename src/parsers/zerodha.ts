@@ -1,7 +1,6 @@
 import type { BrokerParser } from "../schemas/BrokerParserSchema.js";
 import type { SkippedRow } from "../schemas/ParseResultSchema.js";
 import { TradeSchema, type Trade } from "../schemas/TradeSchema.js";
-import { parseDate } from "./utils.js";
 
 // -- CONSTANTS --
 
@@ -24,6 +23,16 @@ const INDIAN_EXCHANGES = ["NSE", "BSE"];
 
 const _inferCurrency = (exchange: string): string => {
   return INDIAN_EXCHANGES.includes(exchange?.toUpperCase()) ? "INR" : "USD";
+};
+
+export const _parseDate = (dateStr: string): string | null => {
+  const dmy = dateStr.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (dmy) {
+    const [, day, month, year] = dmy;
+    return new Date(`${year}-${month}-${day}T00:00:00Z`).toISOString();
+  }
+
+  return null;
 };
 
 // -- main parser --
@@ -53,7 +62,7 @@ export const zerodhaParser: BrokerParser = {
       };
 
       // validate date
-      const executedAt = parseDate(row.trade_date);
+      const executedAt = _parseDate(row.trade_date);
       if (!executedAt) {
         pushError("executed_at", row.trade_date, "Invalid date");
         return;
